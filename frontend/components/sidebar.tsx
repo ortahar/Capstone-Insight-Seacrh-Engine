@@ -7,21 +7,18 @@ import {
   LayoutDashboard,
   Building2,
   Lightbulb,
-  TrendingUp,
-  FileText,
-  Globe,
+    FileText,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+
 const NAV_ITEMS = [
   { href: "/",          label: "Overview",     icon: LayoutDashboard },
   { href: "/companies", label: "Companies",    icon: Building2 },
   { href: "/insights",  label: "Insights",     icon: Lightbulb },
-  { href: "/trends",    label: "Trends",       icon: TrendingUp },
-  { href: "/documents", label: "Documents",    icon: FileText },
-  { href: "/sources",   label: "Data Sources", icon: Globe },
+  { href: "/briefing", label: "Intel Hub", icon: FileText },
 ];
 
 export function Sidebar() {
