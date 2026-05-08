@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Send, Trash2, FileText } from "lucide-react";
+import { X, Send, Trash2, FileText, Copy, Pencil, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Citation {
@@ -23,15 +23,8 @@ interface Turn {
 
 const STORAGE_KEY = "ci_chat_history";
 
-// ── Inline markdown + [Source N] renderer ──────────────────────────────────────
-function InlineContent({
-  text,
-  onSourceClick,
-  activeSource,
-}: {
-  text: string;
-  onSourceClick: (ref: number) => void;
-  activeSource: number | null;
+function InlineContent({ text, onSourceClick, activeSource }: {
+  text: string; onSourceClick: (ref: number) => void; activeSource: number | null;
 }) {
   const parts = text.split(/(\[Source \d+\]|\*\*[^*]+\*\*)/g);
   return (
@@ -42,132 +35,80 @@ function InlineContent({
           const ref = parseInt(srcMatch[1]);
           const active = activeSource === ref;
           return (
-            <button
-              key={i}
-              onClick={() => onSourceClick(ref)}
-              className={cn(
-                "inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors mx-0.5 align-baseline",
-                active
-                  ? "bg-blue-600 text-white"
-                  : "bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200"
-              )}
-            >
-              <FileText size={8} />
-              {part}
+            <button key={i} onClick={() => onSourceClick(ref)}
+              className={cn("inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors mx-0.5 align-baseline",
+                active ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200")}>
+              <FileText size={8} />{part}
             </button>
           );
         }
-        if (part.startsWith("**") && part.endsWith("**")) {
+        if (part.startsWith("**") && part.endsWith("**"))
           return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
-        }
         return <span key={i}>{part}</span>;
       })}
     </>
   );
 }
 
-function AnswerText({
-  text,
-  onSourceClick,
-  activeSource,
-}: {
-  text: string;
-  onSourceClick: (ref: number) => void;
-  activeSource: number | null;
+function AnswerText({ text, onSourceClick, activeSource }: {
+  text: string; onSourceClick: (ref: number) => void; activeSource: number | null;
 }) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
-
   lines.forEach((line, i) => {
     if (/^#{1,3}\s/.test(line)) {
-      elements.push(
-        <p key={i} className="text-[13px] font-semibold text-gray-900 mt-3 mb-0.5 first:mt-0">
-          <InlineContent text={line.replace(/^#{1,3}\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} />
-        </p>
-      );
+      elements.push(<p key={i} className="text-[13px] font-semibold text-gray-900 mt-3 mb-0.5 first:mt-0">
+        <InlineContent text={line.replace(/^#{1,3}\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></p>);
     } else if (/^---+$/.test(line.trim())) {
       elements.push(<hr key={i} className="border-gray-200 my-2" />);
     } else if (/^>\s/.test(line)) {
-      elements.push(
-        <p key={i} className="border-l-2 border-blue-300 pl-2 my-1 text-[12px] text-gray-500 italic">
-          <InlineContent text={line.replace(/^>\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} />
-        </p>
-      );
+      elements.push(<p key={i} className="border-l-2 border-blue-300 pl-2 my-1 text-[12px] text-gray-500 italic">
+        <InlineContent text={line.replace(/^>\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></p>);
     } else if (/^[-*•]\s/.test(line)) {
-      elements.push(
-        <div key={i} className="flex gap-1.5 text-[13px] text-gray-700 leading-relaxed">
-          <span className="shrink-0 text-gray-400 mt-0.5">·</span>
-          <span><InlineContent text={line.replace(/^[-*•]\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></span>
-        </div>
-      );
+      elements.push(<div key={i} className="flex gap-1.5 text-[13px] text-gray-700 leading-relaxed">
+        <span className="shrink-0 text-gray-400 mt-0.5">·</span>
+        <span><InlineContent text={line.replace(/^[-*•]\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></span></div>);
     } else if (/^\d+\.\s/.test(line)) {
       const num = line.match(/^(\d+)\.\s/)?.[1];
-      elements.push(
-        <div key={i} className="flex gap-1.5 text-[13px] text-gray-700 leading-relaxed">
-          <span className="shrink-0 text-gray-500 font-medium w-4">{num}.</span>
-          <span><InlineContent text={line.replace(/^\d+\.\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></span>
-        </div>
-      );
+      elements.push(<div key={i} className="flex gap-1.5 text-[13px] text-gray-700 leading-relaxed">
+        <span className="shrink-0 text-gray-500 font-medium w-4">{num}.</span>
+        <span><InlineContent text={line.replace(/^\d+\.\s/, "")} onSourceClick={onSourceClick} activeSource={activeSource} /></span></div>);
     } else if (line.trim() === "") {
       elements.push(<div key={i} className="h-1.5" />);
     } else {
-      elements.push(
-        <p key={i} className="text-[13px] text-gray-700 leading-relaxed">
-          <InlineContent text={line} onSourceClick={onSourceClick} activeSource={activeSource} />
-        </p>
-      );
+      elements.push(<p key={i} className="text-[13px] text-gray-700 leading-relaxed">
+        <InlineContent text={line} onSourceClick={onSourceClick} activeSource={activeSource} /></p>);
     }
   });
-
   return <div className="space-y-0.5">{elements}</div>;
 }
 
-// ── Main widget ────────────────────────────────────────────────────────────────
 export function AIChatWidget() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]       = useState(false);
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => { setMounted(true); }, []);
-  const [history, setHistory] = useState<Turn[]>([]);
-  const [question, setQuestion] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const [history, setHistory]       = useState<Turn[]>([]);
+  const [question, setQuestion]     = useState("");
+  const [loading, setLoading]       = useState(false);
   const [activeSource, setActiveSource] = useState<{ turnIdx: number; ref: number } | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [copiedIdx, setCopiedIdx]   = useState<number | null>(null);   // which AI bubble was copied
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);   // which user bubble is being edited
+  const [editingText, setEditingText] = useState("");
+  const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load history from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setHistory(JSON.parse(saved));
-    } catch {}
-  }, []);
-
-  // Save history to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    } catch {}
-  }, [history]);
-
-  // Scroll to bottom on new message
-  useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, loading, open]);
-
-  // Focus textarea when panel opens
-  useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 100);
-  }, [open]);
+  useEffect(() => { try { const s = localStorage.getItem(STORAGE_KEY); if (s) setHistory(JSON.parse(s)); } catch {} }, []);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); } catch {} }, [history]);
+  useEffect(() => { if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [history, loading, open]);
+  useEffect(() => { if (open) setTimeout(() => textareaRef.current?.focus(), 100); }, [open]);
 
   const ask = useCallback(async (q: string) => {
     const trimmed = q.trim();
     if (!trimmed || loading) return;
-
     setQuestion("");
     setLoading(true);
     setActiveSource(null);
-
     try {
       const res = await fetch("/api/search", {
         method: "POST",
@@ -185,29 +126,42 @@ export function AIChatWidget() {
   }, [loading, history]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      ask(question);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(question); }
   };
 
-  const clearHistory = () => {
-    setHistory([]);
-    setActiveSource(null);
-    localStorage.removeItem(STORAGE_KEY);
+  const clearHistory = () => { setHistory([]); setActiveSource(null); localStorage.removeItem(STORAGE_KEY); };
+
+  // Copy AI response
+  const copyAnswer = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    });
+  };
+
+  // Edit user question — loads it back into input
+  const startEdit = (idx: number, text: string) => {
+    setEditingIdx(idx);
+    setEditingText(text);
+  };
+
+  const submitEdit = async () => {
+    if (!editingText.trim() || editingIdx === null) return;
+    // Remove from this turn onwards and re-ask
+    setHistory(h => h.slice(0, editingIdx));
+    setEditingIdx(null);
+    await ask(editingText);
+    setEditingText("");
   };
 
   if (!mounted) return null;
 
   return createPortal(
     <>
-      {/* Slide-in panel */}
-      <div
-        className={cn(
-          "fixed top-0 right-0 h-screen w-[380px] bg-white border-l border-gray-200 shadow-xl z-[9998] flex flex-col transition-transform duration-300 ease-in-out",
-          open ? "translate-x-0" : "translate-x-full"
-        )}
-      >
+      <div className={cn(
+        "fixed top-0 right-0 h-screen w-[380px] bg-white border-l border-gray-200 shadow-xl z-[9998] flex flex-col transition-transform duration-300 ease-in-out",
+        open ? "translate-x-0" : "translate-x-full"
+      )}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
@@ -217,17 +171,10 @@ export function AIChatWidget() {
             <span className="text-sm font-semibold text-gray-900">Ask AI</span>
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={clearHistory}
-              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-              title="Clear history"
-            >
+            <button onClick={clearHistory} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" title="Clear history">
               <Trash2 size={14} />
             </button>
-            <button
-              onClick={() => setOpen(false)}
-              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-            >
+            <button onClick={() => setOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
               <X size={14} />
             </button>
           </div>
@@ -245,16 +192,45 @@ export function AIChatWidget() {
 
           {history.map((turn, turnIdx) => (
             <div key={turnIdx} className="space-y-2">
+
               {/* User bubble */}
               <div className="flex justify-end">
-                <div className="max-w-[85%] bg-blue-600 text-white rounded-2xl rounded-tr-sm px-3 py-2 text-[13px] leading-relaxed">
-                  {turn.question}
+                <div className="group relative max-w-[85%]">
+                  <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-3 py-2 text-[13px] leading-relaxed">
+                    {turn.question}
+                  </div>
+                  {/* Edit button on user bubble */}
+                  <button
+                    onClick={() => startEdit(turnIdx, turn.question)}
+                    className="absolute -left-7 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                    title="Edit message"
+                  >
+                    <Pencil size={12} />
+                  </button>
                 </div>
               </div>
 
+              {/* Edit inline box */}
+              {editingIdx === turnIdx && (
+                <div className="flex gap-2 mt-1">
+                  <textarea
+                    value={editingText}
+                    onChange={e => setEditingText(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitEdit(); } }}
+                    className="flex-1 border border-blue-300 rounded-xl px-3 py-2 text-[13px] resize-none focus:outline-none focus:border-blue-500"
+                    rows={2}
+                    autoFocus
+                  />
+                  <div className="flex flex-col gap-1">
+                    <button onClick={submitEdit} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700">Send</button>
+                    <button onClick={() => setEditingIdx(null)} className="px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg text-xs hover:bg-gray-50">Cancel</button>
+                  </div>
+                </div>
+              )}
+
               {/* AI bubble */}
               <div className="flex justify-start">
-                <div className="max-w-[92%] bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-3 py-2.5 space-y-1.5">
+                <div className="group relative max-w-[92%] bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-3 py-2.5 space-y-1.5">
                   <AnswerText
                     text={turn.answer}
                     onSourceClick={ref => setActiveSource(
@@ -270,9 +246,7 @@ export function AIChatWidget() {
                       <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-2.5 text-[11px] space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-blue-600">[Source {cit.ref}] {cit.company} · {cit.period}</span>
-                          <button onClick={() => setActiveSource(null)} className="text-gray-400 hover:text-gray-600">
-                            <X size={10} />
-                          </button>
+                          <button onClick={() => setActiveSource(null)} className="text-gray-400 hover:text-gray-600"><X size={10} /></button>
                         </div>
                         <p className="text-gray-500 italic leading-relaxed">{cit.snippet}</p>
                       </div>
@@ -289,8 +263,18 @@ export function AIChatWidget() {
                       ))}
                     </div>
                   )}
+
+                  {/* Copy button on AI bubble */}
+                  <button
+                    onClick={() => copyAnswer(turn.answer, turnIdx)}
+                    className="absolute -bottom-6 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 bg-white border border-gray-200 rounded-md px-2 py-0.5 shadow-sm"
+                    title="Copy response"
+                  >
+                    {copiedIdx === turnIdx ? <><Check size={11} className="text-green-500" /> Copied!</> : <><Copy size={11} /> Copy</>}
+                  </button>
                 </div>
               </div>
+
             </div>
           ))}
 
@@ -299,17 +283,12 @@ export function AIChatWidget() {
               <div className="bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-3 py-2.5">
                 <div className="flex gap-1 items-center h-4">
                   {[0, 1, 2].map(i => (
-                    <div
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
+                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
               </div>
             </div>
           )}
-
           <div ref={bottomRef} />
         </div>
 
@@ -338,15 +317,8 @@ export function AIChatWidget() {
         </div>
       </div>
 
-      {/* Backdrop (mobile-friendly) */}
-      {open && (
-        <div
-          className="fixed inset-0 z-[9997] bg-black/10 backdrop-blur-[1px]"
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {open && <div className="fixed inset-0 z-[9997] bg-black/10 backdrop-blur-[1px]" onClick={() => setOpen(false)} />}
 
-      {/* Floating trigger button */}
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
