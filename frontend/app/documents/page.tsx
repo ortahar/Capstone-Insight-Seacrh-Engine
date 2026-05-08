@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
 import { Badge } from "@/components/ui/badge";
 import { COMPANY_COLORS, type Document } from "@/lib/types";
+import { Upload, X, CheckCircle } from "lucide-react";
 
 const COMPANIES_FILTER = ["All", "Elevance Health", "UnitedHealth Group", "Aetna (CVS Health)"];
 const YEARS_FILTER = ["All", "2025", "2024", "2023", "2022", "2021", "2020"];
@@ -17,7 +18,14 @@ export default function DocumentsPage() {
   const [selected, setSelected] = useState<Document | null>(null);
   const [preview, setPreview] = useState("");
 
-  useEffect(() => {
+  // Upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+
+  const fetchDocs = () => {
     const params = new URLSearchParams();
     if (company !== "All") params.set("company", company);
     if (year !== "All") params.set("year", year);
@@ -26,7 +34,9 @@ export default function DocumentsPage() {
       .then(setDocs)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [company, year]);
+  };
+
+  useEffect(() => { fetchDocs(); }, [company, year]);
 
   const filtered = docs.filter(d =>
     !search || d.filename.toLowerCase().includes(search.toLowerCase())
@@ -40,10 +50,84 @@ export default function DocumentsPage() {
     } catch { setPreview(""); }
   };
 
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (!file.name.endsWith(".pdf") && !file.name.endsWith(".txt")) {
+      setUploadError("Only PDF or TXT files allowed.");
+      return;
+    }
+    setUploading(true);
+    setUploadError("");
+    setUploadSuccess("");
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setUploadSuccess(`✓ "${file.name}" uploaded successfully!`);
+      fetchDocs();
+    } catch (e) {
+      setUploadError(`Upload failed: ${String(e)}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleUpload(file);
+  };
+
   return (
     <div className="flex flex-col flex-1 overflow-auto">
       <Header title="Documents" subtitle="Full transcript library · Browse and preview" />
       <div className="flex-1 p-6 space-y-4">
+
+        {/* Upload Box */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-colors cursor-pointer ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-secondary/30"}`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.txt"
+            className="hidden"
+            onChange={onFileChange}
+          />
+          <Upload size={24} className="text-muted-foreground" />
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">
+              {uploading ? "Uploading…" : "Upload a document"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Drag & drop or click · PDF or TXT · Earnings calls, SEC filings, reports
+            </p>
+          </div>
+          {uploadSuccess && (
+            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-md">
+              <CheckCircle size={13} /> {uploadSuccess}
+            </div>
+          )}
+          {uploadError && (
+            <div className="flex items-center gap-2 text-xs text-red-500 bg-red-50 px-3 py-1.5 rounded-md">
+              <X size={13} /> {uploadError}
+            </div>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
