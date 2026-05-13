@@ -3,14 +3,12 @@
     "frontend": {
       "routePrefix": "/",
       "framework": "nextjs",
-      "buildCommand": "cd frontend && npm install && npm run build",
-      "outputDirectory": "frontend/.next"
+      "src": "frontend"
     },
     "backend": {
       "routePrefix": "/api",
       "framework": "fastapi",
-      "buildCommand": "pip install -r backend/requirements.txt",
-      "startCommand": "cd backend && uvicorn main:app --host 0.0.0.0 --port 8000"
+      "src": "backend"
     }
   }
 }
