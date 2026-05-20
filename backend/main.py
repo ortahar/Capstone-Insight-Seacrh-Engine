@@ -19,7 +19,7 @@ from src.utils.helpers import TOPIC_KEYWORDS
 from src.scraper.sources import SOURCES
 from src.utils.summary_cache import get_cached, save_cache
 from src.scraper.deduplicator import get_stats as get_dedup_stats
-from config import GROQ_API_KEY, TOPICS_FILE, COMPANIES_CONFIG, BASE_DIR
+from config import ANTHROPIC_API_KEY, TOPICS_FILE, COMPANIES_CONFIG, BASE_DIR
 
 SUMMARIES_DIR = BASE_DIR / "data" / "summaries" / "topics"
 
@@ -37,7 +37,7 @@ def _run_auto_update():
     try:
         _last_update["status"] = "running"
         from scripts.auto_update import run_update
-        result = run_update(summarize=bool(GROQ_API_KEY))
+        result = run_update(summarize=bool(ANTHROPIC_API_KEY))
         _last_update = {
             "time": datetime.now().isoformat(),
             "new_docs": result.get("new_docs", 0),
@@ -180,8 +180,8 @@ def search(req: SearchRequest):
     context = get_context_string(hits) if hits else ""
     citations = format_citations(hits) if hits else []
 
-    if not GROQ_API_KEY:
-        answer = f"[Demo mode — no GROQ_API_KEY set]\n\nFound {len(hits)} relevant chunks."
+    if not ANTHROPIC_API_KEY:
+        answer = f"[Demo mode — no ANTHROPIC_API_KEY set]\n\nFound {len(hits)} relevant chunks."
     else:
         from src.llm.claude_client import answer_question
         answer = answer_question(req.question, context, req.history)
@@ -201,7 +201,7 @@ def generate_insights_endpoint(req: InsightsRequest):
         text = upload_path.read_text(encoding="utf-8", errors="ignore")
         company = req.company or req.filename
         period  = "Uploaded document"
-        if not GROQ_API_KEY:
+        if not ANTHROPIC_API_KEY:
             insights = (
                 f"• [Strategy] Key strategic initiatives identified in the document\n"
                 f"• [Financial] Financial performance metrics extracted\n"
@@ -223,7 +223,7 @@ def generate_insights_endpoint(req: InsightsRequest):
     )
     if not doc:
         raise HTTPException(404, f"Document not found: {req.company} {req.year} {req.quarter}")
-    if not GROQ_API_KEY:
+    if not ANTHROPIC_API_KEY:
         insights = (
             f"• [Strategy] {req.company} focused on expanding value-based care partnerships\n"
             f"• [Financial] Premium revenue growth driven by Medicare Advantage enrollment gains\n"
@@ -268,7 +268,7 @@ def get_filing_detail(company: str = Query(...), period: str = Query(...)):
     if not doc:
         raise HTTPException(404, "Filing not found")
     cached = get_cached(doc["company"], period)
-    if not cached and GROQ_API_KEY:
+    if not cached and ANTHROPIC_API_KEY:
         from src.llm.claude_client import generate_insights, summarize_document
         summary = summarize_document(doc["text"], company, period)
         insights = generate_insights(doc["text"], company, period)
@@ -320,7 +320,7 @@ def summarize_news(filename: str = Query(...), company_display: str = Query(...)
     cached = get_cached(doc["company"], filename)
     if cached:
         return cached
-    if not GROQ_API_KEY:
+    if not ANTHROPIC_API_KEY:
         return {"insights": "[API key required for AI summaries]", "summary": ""}
     lines = doc["text"].split("\n")
     title = next((l.replace("Title: ", "") for l in lines if l.startswith("Title:")), filename)
@@ -355,7 +355,7 @@ def run_scraper():
     def _run():
         try:
             from scripts.auto_update import run_update
-            run_update(summarize=bool(GROQ_API_KEY))
+            run_update(summarize=bool(ANTHROPIC_API_KEY))
         except Exception as e:
             print(f"[scraper] Error: {e}")
     threading.Thread(target=_run, daemon=True).start()
