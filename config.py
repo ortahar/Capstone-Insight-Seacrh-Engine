@@ -16,8 +16,8 @@ TOPICS_FILE = BASE_DIR / "data" / "topics.json"
 for _d in (VECTOR_DB_DIR, DATA_PROCESSED, LOGS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-sonnet-4-6"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CHUNK_SIZE = 800
