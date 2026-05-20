@@ -129,10 +129,11 @@ def _load_topic_summary(topic_id: str, company_id: str) -> dict | None:
 
 def run_topic_refresh(topic_id: str) -> dict:
     """
-    Refresh news and AI summaries for a single topic across all companies in parallel.
-    Uses Claude web_search_20250305 as primary source; falls back to cached RSS articles.
-    Returns {topic_id, companies_refreshed, articles_found}.
+    Refresh news and AI summaries for a single topic across all companies.
+    Phase 1 (parallel): web search + RSS article gathering.
+    Phase 2 (sequential): AI summary generation with rate-limit retry.
     """
+    import time
     import anthropic
     from src.scraper.web_search_scraper import search_topic_for_company
     from config import COMPANIES_CONFIG
@@ -143,15 +144,15 @@ def run_topic_refresh(topic_id: str) -> dict:
         logger.error(f"[topic] Topic not found: {topic_id}")
         return {"error": f"Topic {topic_id} not found"}
 
-    logger.info(f"[topic] Refreshing: {topic['topic_name']} (parallel across {len(COMPANIES_CONFIG)} companies)")
+    logger.info(f"[topic] Refreshing: {topic['topic_name']} ({len(COMPANIES_CONFIG)} companies)")
     keywords = topic["search_keywords"]
 
-    def _process_company(args: tuple[str, dict]) -> tuple[str, int]:
-        """Returns (company_id, article_count). Saves summary file as side effect."""
+    def _gather_articles(args: tuple[str, dict]) -> tuple[str, dict, list[dict]]:
+        """Phase 1: gather articles for one company (web search + RSS)."""
         company_id, company_cfg = args
         company_display = company_cfg["display_name"]
 
-        # ── Step 1: Claude web_search (primary) ──────────────────────────────
+        # Claude web_search (primary)
         web_articles: list[dict] = []
         if ANTHROPIC_API_KEY:
             try:
@@ -165,46 +166,40 @@ def run_topic_refresh(topic_id: str) -> dict:
             except Exception as e:
                 logger.error(f"[topic] web_search failed for {company_id}: {e}")
 
-        # ── Step 2: Cached RSS news files (fallback / supplement) ────────────
+        # Cached RSS files (fallback / supplement)
         news_dir = DATA_RAW / "news" / company_id
         rss_articles: list[dict] = []
         if news_dir.exists():
             for f in sorted(news_dir.glob("*.txt"), reverse=True)[:40]:
                 text = f.read_text(encoding="utf-8", errors="ignore")
                 lines = text.split("\n")
-
                 tier_raw = next(
-                    (l.replace("Credibility-Tier: ", "") for l in lines if l.startswith("Credibility-Tier:")),
-                    None,
+                    (l.replace("Credibility-Tier: ", "") for l in lines if l.startswith("Credibility-Tier:")), None
                 )
                 tier = tier_raw.strip() if tier_raw else "3"
                 if tier == "0A":
                     continue
-
                 if not any(kw.lower() in text.lower() for kw in keywords):
                     continue
-
                 title = next((l.replace("Title: ", "") for l in lines if l.startswith("Title:")), "")
                 url = next((l.replace("URL: ", "") for l in lines if l.startswith("URL:")), "")
                 date = next((l.replace("Date: ", "") for l in lines if l.startswith("Date:")), "")
                 score_raw = next((l.replace("Credibility-Score: ", "") for l in lines if l.startswith("Credibility-Score:")), "0.5")
                 label = next((l.replace("Credibility-Label: ", "") for l in lines if l.startswith("Credibility-Label:")), "General press")
                 domain = next((l.replace("Source-Domain: ", "") for l in lines if l.startswith("Source-Domain:")), "")
-
                 if not title or not url:
                     continue
                 try:
                     score = float(score_raw)
                 except ValueError:
                     score = 0.5
-
                 rss_articles.append({
                     "title": title, "url": url, "date": date,
                     "credibility_score": score, "credibility_tier": tier,
                     "credibility_label": label, "source_domain": domain, "summary": "",
                 })
 
-        # ── Step 3: Merge & deduplicate, keep top 5 ─────────────────────────
+        # Merge & deduplicate, keep top 5
         seen_urls: set[str] = set()
         merged: list[dict] = []
         for a in web_articles + rss_articles:
@@ -213,52 +208,68 @@ def run_topic_refresh(topic_id: str) -> dict:
                 merged.append(a)
 
         top5 = sorted(merged, key=lambda a: (a.get("credibility_score", 0), a.get("date", "")), reverse=True)[:5]
+        return (company_id, company_cfg, top5)
 
-        # ── Step 4: AI summary ───────────────────────────────────────────────
+    # ── Phase 1: gather articles in parallel ──────────────────────────────────
+    gathered: list[tuple[str, dict, list[dict]]] = []
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {pool.submit(_gather_articles, item): item[0] for item in COMPANIES_CONFIG.items()}
+        for future in as_completed(futures):
+            try:
+                gathered.append(future.result())
+            except Exception as e:
+                logger.error(f"[topic] Article gathering failed: {e}")
+
+    # ── Phase 2: generate AI summaries sequentially to stay under rate limit ──
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+    results: list[tuple[str, int]] = []
+
+    for company_id, company_cfg, top5 in gathered:
+        company_display = company_cfg["display_name"]
         existing = _load_topic_summary(topic_id, company_id)
 
-        if ANTHROPIC_API_KEY and top5:
-            try:
-                client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-                snippets = "\n\n".join(
-                    f"[{a.get('date', '')}] {a['title']}\n{a.get('summary', '')}" for a in top5
-                )
-                msg = client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=400,
-                    messages=[{"role": "user", "content": (
-                        f"You are a competitive intelligence analyst for Blue Shield of California. "
-                        f"Analyze the following recent articles about {company_display} related to "
-                        f"'{topic['topic_name']}'. Write 4-6 sentences covering: key developments, "
-                        f"strategic direction, and implications for Blue Shield of California. "
-                        f"Be specific and factual.\n\n{snippets}"
-                    )}],
-                )
-                summary_text = msg.content[0].text
-            except Exception as e:
-                logger.error(f"[topic] AI summary failed for {company_id}: {e}")
-                summary_text = existing.get("summary", "") if existing else ""
-        elif not top5:
+        if not top5:
             if existing and existing.get("summary") and existing["summary"] != f"No recent articles found for {topic['topic_name']}.":
                 logger.info(f"[topic] {company_display}: no new articles, keeping existing summary")
-                return (company_id, 0)
+                results.append((company_id, 0))
+                continue
             summary_text = f"No recent articles found for {topic['topic_name']}."
+        elif client:
+            snippets = "\n\n".join(
+                f"[{a.get('date', '')}] {a['title']}\n{a.get('summary', '')}" for a in top5
+            )
+            summary_text = ""
+            for attempt in range(3):
+                try:
+                    msg = client.messages.create(
+                        model="claude-sonnet-4-6",
+                        max_tokens=400,
+                        messages=[{"role": "user", "content": (
+                            f"You are a competitive intelligence analyst for Blue Shield of California. "
+                            f"Analyze the following recent articles about {company_display} related to "
+                            f"'{topic['topic_name']}'. Write 4-6 sentences covering: key developments, "
+                            f"strategic direction, and implications for Blue Shield of California. "
+                            f"Be specific and factual.\n\n{snippets}"
+                        )}],
+                    )
+                    summary_text = msg.content[0].text
+                    break
+                except anthropic.RateLimitError:
+                    wait = 30 * (attempt + 1)
+                    logger.warning(f"[topic] Rate limited for {company_id}, retrying in {wait}s...")
+                    time.sleep(wait)
+                except Exception as e:
+                    logger.error(f"[topic] AI summary failed for {company_id}: {e}")
+                    summary_text = existing.get("summary", "") if existing else ""
+                    break
+            if not summary_text:
+                summary_text = existing.get("summary", "") if existing else ""
         else:
             summary_text = f"[API key required] Found {len(top5)} articles."
 
         _save_topic_summary(topic_id, company_id, summary_text, top5)
-        logger.info(f"[topic] {company_display} — {len(top5)} articles saved")
-        return (company_id, len(top5))
-
-    # ── Run all companies in parallel (up to 5 threads to avoid API rate limits) ──
-    results: list[tuple[str, int]] = []
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        futures = {pool.submit(_process_company, item): item[0] for item in COMPANIES_CONFIG.items()}
-        for future in as_completed(futures):
-            try:
-                results.append(future.result())
-            except Exception as e:
-                logger.error(f"[topic] Company task failed: {e}")
+        logger.info(f"[topic] {company_display} — {len(top5)} articles, summary saved")
+        results.append((company_id, len(top5)))
 
     companies_refreshed = [r[0] for r in results]
     total_articles = sum(r[1] for r in results)
