@@ -5,10 +5,23 @@ cd "$(dirname "$0")"
 
 echo "Starting CI Insights Engine..."
 
+# Install Python dependencies
+echo "→ Installing Python dependencies..."
+pip install -r backend/requirements.txt -q
+
+# Build vector DB on first run
+VECTOR_DB="data/vector_db/chroma.sqlite3"
+if [ ! -f "$VECTOR_DB" ]; then
+  echo "→ Vector DB not found. Building index (this takes 5–15 min on first run)..."
+  python scripts/ingest_and_index.py
+  echo "✓ Index built"
+else
+  echo "✓ Vector DB found, skipping index build"
+fi
+
 # Backend
 echo "→ Starting FastAPI backend on :8000"
 cd backend
-pip install -r requirements.txt -q
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 cd ..
