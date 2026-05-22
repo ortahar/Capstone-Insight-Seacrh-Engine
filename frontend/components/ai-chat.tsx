@@ -165,8 +165,8 @@ export function AIChatWidget() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-[11px] font-bold">B</span>
+            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center p-1 overflow-hidden">
+              <img src="/bsc-logo.svg" alt="Blue Shield" className="w-full h-full object-contain" />
             </div>
             <span className="text-sm font-semibold text-gray-900">Ask AI</span>
           </div>
@@ -322,12 +322,12 @@ export function AIChatWidget() {
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
-          "fixed bottom-6 right-6 z-[9999] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200",
+          "fixed bottom-6 right-6 z-[9999] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 overflow-hidden p-2",
           open && "opacity-0 pointer-events-none"
         )}
         title="Ask AI"
       >
-        <span className="text-white text-lg font-bold leading-none">B</span>
+        <img src="/bsc-logo.svg" alt="Blue Shield of California" className="w-full h-full object-contain" />
       </button>
     </>,
     document.body

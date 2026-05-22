@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 230" fill="none">
+  <!-- White shield shape -->
+  <path d="M100 8 L185 38 C188 45 188 85 188 120 C188 172 148 202 100 222 C52 202 12 172 12 120 C12 85 12 45 15 38 Z" fill="white"/>
+
+  <!-- Staff (vertical rod) — blue -->
+  <rect x="93" y="44" width="14" height="134" rx="7" fill="#1260AB"/>
+
+  <!-- Snake body — blue -->
+  <path d="M100 58
+           C126 52 144 68 132 88
+           C120 108 76 106 80 128
+           C84 150 124 148 132 168
+           C140 185 122 196 100 190"
+        stroke="#1260AB" stroke-width="20"
+        stroke-linecap="round" fill="none"/>
+
+  <!-- Snake head — blue -->
+  <ellipse cx="115" cy="52" rx="22" ry="14" fill="#1260AB" transform="rotate(-22 115 52)"/>
+
+  <!-- Tongue — white so it shows on blue head -->
+  <line x1="126" y1="42" x2="138" y2="33" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="126" y1="42" x2="140" y2="46" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>

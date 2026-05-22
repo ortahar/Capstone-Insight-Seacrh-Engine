@@ -12,7 +12,7 @@ export function Header({ title, subtitle, onRefresh }: HeaderProps) {
   return (
     <header className="h-14 flex items-center justify-between px-6 border-b border-border bg-white shrink-0 shadow-sm">
       <div>
-        <h1 className="text-sm font-semibold text-foreground">{title}</h1>
+        <h1 className="text-[15px] font-bold text-foreground">{title}</h1>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-2">

@@ -33,7 +33,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn(
-        "flex items-center h-14 px-4 border-b border-sidebar-border shrink-0",
+        "flex items-center h-14 px-4 border-b border-sidebar-border shrink-0 relative z-10",
         collapsed && "justify-center px-0"
       )}>
         {!collapsed && (
@@ -47,7 +47,7 @@ export function Sidebar() {
         {collapsed && <span className="text-blue-200 font-bold text-base">CI</span>}
       </div>
 
-      <nav className="flex-1 py-3 overflow-y-auto">
+      <nav className="flex-1 py-3 overflow-y-auto relative z-10">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
@@ -70,7 +70,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-2">
+      <div className="border-t border-sidebar-border p-2 relative z-10">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center justify-center w-full h-8 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
