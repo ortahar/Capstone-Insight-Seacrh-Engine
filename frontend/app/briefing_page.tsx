@@ -338,6 +338,15 @@ function AlertsTab() {
   const [newKeyword, setNewKeyword]   = useState("");
   const [newCompany, setNewCompany]   = useState("All");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [emailInput, setEmailInput]   = useState("");
+  const [subscribed, setSubscribed]   = useState(false);
+
+  const handleSubscribe = () => {
+    if (!emailInput.trim()) return;
+    setSubscribed(true);
+    setEmailInput("");
+    setTimeout(() => setSubscribed(false), 3000);
+  };
 
   const totalActive = alerts.filter(a => a.enabled).length;
   const totalMatches = alerts.filter(a => a.enabled).reduce((s, a) => s + a.matchCount, 0);
@@ -370,6 +379,24 @@ function AlertsTab() {
           <p className="text-xs text-gray-400 mb-1">Last checked</p>
           <p className="text-2xl font-bold text-gray-900">Now</p>
         </div>
+      </div>
+
+      {/* Email subscription bar */}
+      <div className="flex items-center gap-2">
+        <input
+          type="email"
+          value={emailInput}
+          onChange={e => setEmailInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
+          placeholder="type email here to receive email updates on alerts"
+          className="flex-1 bg-white border border-[#e8e8e8] rounded-xl px-4 py-3 text-[13px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+        />
+        <button
+          onClick={handleSubscribe}
+          className="flex items-center gap-1.5 px-5 py-3 bg-[#1e40af] text-white rounded-xl text-[13px] font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
+        >
+          {subscribed ? <><Check size={13} /> Subscribed!</> : "Subscribe"}
+        </button>
       </div>
 
       {/* Alert list */}
@@ -456,7 +483,7 @@ function AlertsTab() {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 const TABS = [
   { id: "brief",      label: "Executive Brief",  icon: <FileText size={13} /> },
-  { id: "comparison", label: "Competitor Compare", icon: <Table2 size={13} /> },
+  { id: "comparison", label: "Competitor Profiles", icon: <Table2 size={13} /> },
   { id: "alerts",     label: "Alerts",            icon: <Bell size={13} /> },
 ];
 

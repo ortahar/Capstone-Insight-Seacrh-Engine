@@ -21,12 +21,12 @@ interface CompanyMetrics {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const COMPANIES = [
-  "Elevance Health", "UnitedHealth Group", "Aetna (CVS Health)",
-  "Cigna Group", "Humana", "Centene", "Molina Healthcare", "Oscar Health",
+  "Aetna (CVS Health)", "Centene", "Cigna Group",
+  "Elevance Health", "Humana", "Molina Healthcare", "Oscar Health", "UnitedHealth Group",
 ];
 
 const FOCUS_AREAS = [
-  "Financial Performance", "Medicare & Medicaid", "Market Strategy",
+  "Financial Performance", "Market Strategy", "Medicare & Medicaid",
   "Member Growth", "Regulatory & Policy", "Technology & AI",
 ];
 
@@ -48,7 +48,7 @@ const COMPANY_COLORS: Record<string, string> = {
   "Cigna Group":        "#7e22ce",
   "Humana":             "#c2410c",
   "Centene":            "#0369a1",
-  "Molina Healthcare":  "#047857",
+  "Molina Healthcare":  "#0ea5e9",
   "Oscar Health":       "#be185d",
 };
 
@@ -84,9 +84,16 @@ const ICON_MAP = { trending: <TrendingUp size={14} />, alert: <AlertTriangle siz
 const COLOR_MAP = { trending: "text-green-600 bg-green-50 border-green-100", alert: "text-red-600 bg-red-50 border-red-100", sparkles: "text-blue-600 bg-blue-50 border-blue-100", file: "text-gray-600 bg-gray-50 border-gray-100" };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
+const YEARS = ["2020", "2021", "2022", "2023", "2024", "2025"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function BriefTab() {
-  const [selectedCompanies, setSelectedCompanies] = useState(["Elevance Health", "UnitedHealth Group", "Aetna (CVS Health)"]);
+  const [selectedCompanies, setSelectedCompanies] = useState(COMPANIES.slice(0, 3));
   const [selectedFocus, setSelectedFocus]         = useState(["Financial Performance", "Market Strategy"]);
+  const [startYear, setStartYear]   = useState("2022");
+  const [startMonth, setStartMonth] = useState("Jan");
+  const [endYear, setEndYear]       = useState("2025");
+  const [endMonth, setEndMonth]     = useState("Dec");
   const [loading, setLoading]     = useState(false);
   const [brief, setBrief]         = useState("");
   const [sections, setSections]   = useState<BriefSection[]>([]);
@@ -94,6 +101,7 @@ function BriefTab() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError]         = useState("");
   const [generatedAt, setGeneratedAt] = useState("");
+  const [showSources, setShowSources] = useState(false);
 
   const toggleCompany = (c: string) => setSelectedCompanies(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   const toggleFocus   = (f: string) => setSelectedFocus(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
@@ -154,18 +162,31 @@ Be specific, data-driven, and actionable for senior executives.`,
       {/* Config */}
       <div className="bg-white border border-[#e8e8e8] rounded-2xl p-6 space-y-5">
         <p className="text-[14px] font-semibold text-gray-900">Configure your brief</p>
+
+        {/* Competitors */}
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">Competitors</p>
-          <div className="flex flex-wrap gap-2">
-            {COMPANIES.map(c => (
-              <button key={c} onClick={() => toggleCompany(c)}
-                className={`text-[12px] px-3 py-1.5 rounded-lg border transition-all ${selectedCompanies.includes(c) ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
-                style={selectedCompanies.includes(c) ? { background: COMPANY_COLORS[c] ?? "#1e40af" } : {}}>
-                {c.split(" ")[0]}
-              </button>
-            ))}
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+            {COMPANIES.map(c => {
+              const label = c === "UnitedHealth Group" ? "UnitedHealth"
+                : c === "Aetna (CVS Health)" ? "Aetna"
+                : c === "Molina Healthcare" ? "Molina"
+                : c === "Cigna Group" ? "Cigna"
+                : c === "Elevance Health" ? "Elevance"
+                : c === "Oscar Health" ? "Oscar"
+                : c;
+              return (
+                <button key={c} onClick={() => toggleCompany(c)}
+                  className={`text-[12px] px-2 py-2 rounded-lg border transition-all text-center font-medium truncate ${selectedCompanies.includes(c) ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
+                  style={selectedCompanies.includes(c) ? { background: COMPANY_COLORS[c] ?? "#1e40af" } : {}}>
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
+
+        {/* Focus areas */}
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">Focus areas</p>
           <div className="flex flex-wrap gap-2">
@@ -177,6 +198,37 @@ Be specific, data-driven, and actionable for senior executives.`,
             ))}
           </div>
         </div>
+
+        {/* Date context window */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-2">Date context window</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-gray-500">Start</label>
+              <select value={startMonth} onChange={e => setStartMonth(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-blue-400">
+                {MONTHS.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <select value={startYear} onChange={e => setStartYear(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-blue-400">
+                {YEARS.map(y => <option key={y}>{y}</option>)}
+              </select>
+            </div>
+            <span className="text-gray-300 text-sm">→</span>
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-gray-500">End</label>
+              <select value={endMonth} onChange={e => setEndMonth(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-blue-400">
+                {MONTHS.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <select value={endYear} onChange={e => setEndYear(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-blue-400">
+                {YEARS.map(y => <option key={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {error && <p className="text-xs text-red-500">{error}</p>}
         <button onClick={generate} disabled={loading}
           className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
@@ -192,12 +244,13 @@ Be specific, data-driven, and actionable for senior executives.`,
       )}
 
       {!loading && brief && (
-        <div className="space-y-4">
-          <div className="bg-white border border-[#e8e8e8] rounded-2xl px-6 py-4 flex items-center justify-between">
+        <div className="bg-white border border-[#e8e8e8] rounded-2xl overflow-hidden">
+          {/* Brief header */}
+          <div className="px-6 py-4 border-b border-[#f0f0f0] flex items-center justify-between">
             <div>
               <p className="text-[14px] font-bold text-gray-900">BSC Competitive Intelligence Brief</p>
               <div className="flex items-center gap-2 text-[12px] text-gray-400 mt-0.5">
-                <Calendar size={11} /> {generatedAt} · {selectedCompanies.length} competitors
+                <Calendar size={11} /> {generatedAt} · {selectedCompanies.length} competitors · {startMonth} {startYear}–{endMonth} {endYear}
               </div>
             </div>
             <div className="flex gap-2">
@@ -210,24 +263,41 @@ Be specific, data-driven, and actionable for senior executives.`,
               </button>
             </div>
           </div>
-          {sections.length > 0 ? sections.map((s, i) => (
-            <div key={i} className="bg-white border border-[#e8e8e8] rounded-2xl p-5">
-              <div className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-lg border mb-3 ${COLOR_MAP[s.icon]}`}>
-                {ICON_MAP[s.icon]} {s.title}
+
+          {/* Unified content block */}
+          <div className="px-6 py-5 space-y-6">
+            {sections.length > 0 ? sections.map((s, i) => (
+              <div key={i}>
+                <div className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-lg border mb-2 ${COLOR_MAP[s.icon]}`}>
+                  {ICON_MAP[s.icon]} {s.title}
+                </div>
+                <div className="text-[13px] text-gray-700 leading-relaxed">
+                  {s.content.split("\n").map((line, j) =>
+                    /^[-*•]\s/.test(line) ? (
+                      <div key={j} className="flex gap-2 mb-1.5"><span className="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 shrink-0" /><span>{line.replace(/^[-*•]\s/, "")}</span></div>
+                    ) : <p key={j} className="mb-1.5">{line}</p>
+                  )}
+                </div>
+                {i < sections.length - 1 && <hr className="mt-4 border-[#f0f0f0]" />}
               </div>
-              <div className="text-[13px] text-gray-700 leading-relaxed">
-                {s.content.split("\n").map((line, j) =>
-                  /^[-*•]\s/.test(line) ? (
-                    <div key={j} className="flex gap-2 mb-1.5"><span className="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 shrink-0" /><span>{line.replace(/^[-*•]\s/, "")}</span></div>
-                  ) : <p key={j} className="mb-1.5">{line}</p>
-                )}
-              </div>
-            </div>
-          )) : (
-            <div className="bg-white border border-[#e8e8e8] rounded-2xl p-6">
+            )) : (
               <pre className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap font-sans">{brief}</pre>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Reveal Sources */}
+          <div className="px-6 py-4 border-t border-[#f0f0f0] bg-[#fafafa]">
+            <button onClick={() => setShowSources(s => !s)}
+              className="flex items-center gap-2 text-[12px] font-bold text-gray-700 hover:text-gray-900 transition-colors">
+              <FileText size={13} />
+              {showSources ? "Hide Sources" : "Reveal Sources"}
+            </button>
+            {showSources && (
+              <div className="mt-3 text-[12px] text-gray-400 italic">
+                Source transparency coming soon — citations will list indexed filings and news articles used to generate this brief.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -245,7 +315,7 @@ Be specific, data-driven, and actionable for senior executives.`,
 }
 
 function ComparisonTab() {
-  const [selected, setSelected] = useState(["Elevance Health", "UnitedHealth Group", "Aetna (CVS Health)"]);
+  const [selected, setSelected] = useState(COMPANIES.slice(0, 3));
   const filtered = COMPANY_METRICS.filter(c => selected.includes(c.name));
 
   const toggle = (name: string) => {
@@ -274,14 +344,23 @@ function ComparisonTab() {
       {/* Company selector */}
       <div className="bg-white border border-[#e8e8e8] rounded-2xl p-5">
         <p className="text-[13px] font-semibold text-gray-900 mb-3">Select competitors to compare (max 5)</p>
-        <div className="flex flex-wrap gap-2">
-          {COMPANIES.map(c => (
-            <button key={c} onClick={() => toggle(c)}
-              className={`text-[12px] px-3 py-1.5 rounded-lg border transition-all ${selected.includes(c) ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
-              style={selected.includes(c) ? { background: COMPANY_COLORS[c] ?? "#1e40af" } : {}}>
-              {c.split(" ")[0]}
-            </button>
-          ))}
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {COMPANIES.map(c => {
+            const label = c === "UnitedHealth Group" ? "UnitedHealth"
+              : c === "Aetna (CVS Health)" ? "Aetna"
+              : c === "Molina Healthcare" ? "Molina"
+              : c === "Cigna Group" ? "Cigna"
+              : c === "Elevance Health" ? "Elevance"
+              : c === "Oscar Health" ? "Oscar"
+              : c;
+            return (
+              <button key={c} onClick={() => toggle(c)}
+                className={`text-[12px] px-2 py-2 rounded-lg border transition-all text-center font-medium truncate ${selected.includes(c) ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+                style={selected.includes(c) ? { background: COMPANY_COLORS[c] ?? "#1e40af" } : {}}>
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -338,6 +417,15 @@ function AlertsTab() {
   const [newKeyword, setNewKeyword]   = useState("");
   const [newCompany, setNewCompany]   = useState("All");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [emailInput, setEmailInput]   = useState("");
+  const [subscribed, setSubscribed]   = useState(false);
+
+  const handleSubscribe = () => {
+    if (!emailInput.trim()) return;
+    setSubscribed(true);
+    setEmailInput("");
+    setTimeout(() => setSubscribed(false), 3000);
+  };
 
   const totalActive = alerts.filter(a => a.enabled).length;
   const totalMatches = alerts.filter(a => a.enabled).reduce((s, a) => s + a.matchCount, 0);
@@ -370,6 +458,24 @@ function AlertsTab() {
           <p className="text-xs text-gray-400 mb-1">Last checked</p>
           <p className="text-2xl font-bold text-gray-900">Now</p>
         </div>
+      </div>
+
+      {/* Email subscription bar */}
+      <div className="flex items-center gap-2">
+        <input
+          type="email"
+          value={emailInput}
+          onChange={e => setEmailInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
+          placeholder="type email here to receive email updates on alerts"
+          className="flex-1 bg-white border border-[#e8e8e8] rounded-xl px-4 py-3 text-[13px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+        />
+        <button
+          onClick={handleSubscribe}
+          className="flex items-center gap-1.5 px-5 py-3 bg-[#1e40af] text-white rounded-xl text-[13px] font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
+        >
+          {subscribed ? <><Check size={13} /> Subscribed!</> : "Subscribe"}
+        </button>
       </div>
 
       {/* Alert list */}
@@ -456,7 +562,7 @@ function AlertsTab() {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 const TABS = [
   { id: "brief",      label: "Executive Brief",  icon: <FileText size={13} /> },
-  { id: "comparison", label: "Competitor Compare", icon: <Table2 size={13} /> },
+  { id: "comparison", label: "Competitor Profiles", icon: <Table2 size={13} /> },
   { id: "alerts",     label: "Alerts",            icon: <Bell size={13} /> },
 ];
 
@@ -465,7 +571,7 @@ export default function BriefingPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-auto bg-[#f7f7f7]">
-      <Header title="Intelligence Hub" subtitle="Executive briefing · Competitor comparison · Keyword alerts" />
+      <Header title="Intelligence Hub" />
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
