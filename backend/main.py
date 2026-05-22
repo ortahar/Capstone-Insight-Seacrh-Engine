@@ -68,7 +68,7 @@ def startup():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -81,6 +81,10 @@ class SearchRequest(BaseModel):
     history: list = []
 
 class InsightsRequest(BaseModel):
+    filename: str = ""
+    company: str = ""
+    year: int = 0
+    quarter: str = ""
     company: str
     year: int
     quarter: str
@@ -187,16 +191,38 @@ def search(req: SearchRequest):
 
 @app.post("/insights")
 def generate_insights_endpoint(req: InsightsRequest):
-    docs = load_all_transcripts()
+    from src.llm.claude_client import generate_insights
+
+    # ── Handle uploaded file ──────────────────────────────────────────────────
+    if req.filename:
+        upload_path = BASE_DIR / "data" / "uploads" / req.filename
+        if not upload_path.exists():
+            raise HTTPException(404, f"Uploaded file not found: {req.filename}")
+        text = upload_path.read_text(encoding="utf-8", errors="ignore")
+        company = req.company or req.filename
+        period  = "Uploaded document"
+        if not ANTHROPIC_API_KEY:
+            insights = (
+                f"• [Strategy] Key strategic initiatives identified in the document\n"
+                f"• [Financial] Financial performance metrics extracted\n"
+                f"• [Market] Market positioning insights found\n"
+                f"• [Product] Product and service developments noted\n"
+                f"• [Risk] Key risk factors identified"
+            )
+        else:
+            insights = generate_insights(text, company, period)
+        return {"insights": insights, "company": company, "period": period}
+
+    # ── Handle existing transcript ────────────────────────────────────────────
+    docs   = load_all_transcripts()
     co_map = {v["display_name"]: k for k, v in COMPANIES_CONFIG.items()}
     co_key = co_map.get(req.company, req.company.lower().split()[0])
-    doc = next(
+    doc    = next(
         (d for d in docs if d["company"] == co_key and d["year"] == req.year and d["quarter"] == req.quarter),
         None,
     )
     if not doc:
         raise HTTPException(404, f"Document not found: {req.company} {req.year} {req.quarter}")
-
     if not ANTHROPIC_API_KEY:
         insights = (
             f"• [Strategy] {req.company} focused on expanding value-based care partnerships\n"
@@ -206,11 +232,8 @@ def generate_insights_endpoint(req: InsightsRequest):
             f"• [Technology] AI-powered prior authorization to reduce administrative burden"
         )
     else:
-        from src.llm.claude_client import generate_insights
         insights = generate_insights(doc["text"], req.company, doc["period"])
-
     return {"insights": insights, "company": req.company, "period": doc["period"]}
-
 
 def _count_keyword(text: str, keywords: list) -> int:
     text_lower = text.lower()
@@ -472,3 +495,19 @@ def _best_label(articles: list[dict]) -> str:
 @app.get("/dedup/stats")
 def dedup_stats():
     return get_dedup_stats()
+
+
+from fastapi import UploadFile, File
+import shutil
+
+UPLOAD_DIR = BASE_DIR / "data" / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+@app.post("/documents/upload")
+async def upload_document(file: UploadFile = File(...)):
+    if not file.filename.endswith((".pdf", ".txt")):
+        raise HTTPException(status_code=400, detail="Only PDF or TXT files allowed.")
+    dest = UPLOAD_DIR / file.filename
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"filename": file.filename, "status": "uploaded"}

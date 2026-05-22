@@ -17,7 +17,7 @@ for _d in (VECTOR_DB_DIR, DATA_PROCESSED, LOGS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-sonnet-4-6"
+ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CHUNK_SIZE = 800

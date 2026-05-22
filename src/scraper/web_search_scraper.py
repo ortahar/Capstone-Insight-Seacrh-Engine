@@ -10,7 +10,9 @@ from datetime import datetime
 
 import anthropic
 
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL
+from config import ANTHROPIC_API_KEY
+
+CLAUDE_MODEL = "claude-sonnet-4-6"  # web_search tool requires Sonnet or above
 from src.scraper.credibility_filter import score_article
 
 logger = logging.getLogger("web_search_scraper")

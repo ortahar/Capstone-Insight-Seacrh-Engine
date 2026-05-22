@@ -270,8 +270,8 @@ export default function OverviewPage() {
   return (
     <div className="flex flex-col flex-1 overflow-auto bg-[#f7f7f7]">
       <header className="h-14 flex items-center justify-between px-8 border-b border-[#e8e8e8] bg-white shrink-0">
-        <span className="text-sm font-bold text-gray-900">Blue Shield CI Engine</span>
-        <span className="text-sm font-semibold text-gray-900">Overview</span>
+        <span className="text-[15px] font-bold text-gray-900">Blue Shield CI Engine</span>
+        <span className="text-[15px] font-semibold text-gray-900">Overview</span>
         <div className="flex items-center gap-3">
           {lastRefreshed && <span className="text-xs text-gray-400">Last refreshed {lastRefreshed}</span>}
         </div>

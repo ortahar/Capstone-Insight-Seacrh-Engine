@@ -1,3 +1,14 @@
+export interface Document {
+  company: string;
+  company_display: string;
+  year: number | null;
+  quarter: string | null;
+  period: string;
+  source_type: string;
+  char_count: number;
+  filename: string;
+}
+
 export interface Citation {
   ref: number;
   company: string;
